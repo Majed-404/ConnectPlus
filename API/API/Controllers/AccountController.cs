@@ -1,6 +1,7 @@
 ﻿using API.Data;
 using API.DTOs;
 using API.Entities;
+using API.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -15,14 +16,17 @@ namespace API.Controllers
     public class AccountController : BaseApiController
     {
         private readonly AppDbContext _context;
+        private readonly ITokenService _tokenService;
 
-        public AccountController(AppDbContext context)
+        public AccountController(AppDbContext context,
+            ITokenService tokenService)
         {
             _context = context;
+            _tokenService = tokenService;
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult<AppUser>> Register(RegisterDto _registerDto)
+        public async Task<ActionResult<UserDto>> Register(RegisterDto _registerDto)
         {
             if(await UserExists(_registerDto.UserName))
             {
@@ -40,7 +44,11 @@ namespace API.Controllers
             _context.Users.Add(_user);
             await _context.SaveChangesAsync();
 
-            return _user;
+            return new UserDto
+            {
+                UserName = _user.UserName,
+                Token = _tokenService.CreateToken(_user)
+            };
         }
 
         private async Task<bool> UserExists(string _userName)
@@ -49,7 +57,7 @@ namespace API.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<AppUser>> Login(LoginDto _loginDto)
+        public async Task<ActionResult<UserDto>> Login(LoginDto _loginDto)
         {
             var _user = await _context.Users.SingleOrDefaultAsync(x => x.UserName == _loginDto.UserName);
 
@@ -70,7 +78,11 @@ namespace API.Controllers
                 }
             }
 
-            return _user;
+            return new UserDto
+            {
+                UserName = _user.UserName,
+                Token = _tokenService.CreateToken(_user)
+            };
         }
     }
 }
